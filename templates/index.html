@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraWeather - Stunning Real-time Weather Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="theme-sunny">
+    <!-- Dynamic Canvas Background -->
+    <canvas id="weather-bg"></canvas>
+    
+    <!-- Ambient glowing lights in background -->
+    <div class="ambient-glow" id="ambient-glow"></div>
+
+    <div class="app-wrapper">
+        <!-- Main Search and Header Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <i data-lucide="cloud-sun" class="logo-icon"></i>
+                <h1>AuraWeather</h1>
+            </div>
+            
+            <div class="search-bar-container">
+                <form id="search-form" class="search-form">
+                    <button type="button" id="geo-btn" class="icon-btn geo-btn" title="Use current location">
+                        <i data-lucide="map-pin"></i>
+                    </button>
+                    <input type="text" id="search-input" placeholder="Search city..." autocomplete="off" required>
+                    <button type="submit" id="search-btn" class="search-btn">
+                        <i data-lucide="search"></i>
+                    </button>
+                </form>
+                <!-- Search suggestions/recent dropdown -->
+                <div id="recent-cities-dropdown" class="recent-cities-dropdown hidden">
+                    <div class="dropdown-header">Recent Locations</div>
+                    <div id="recent-cities-list" class="recent-cities-list"></div>
+                </div>
+            </div>
+
+            <div class="header-controls">
+                <button type="button" id="theme-toggle-btn" class="icon-btn theme-toggle-btn" title="Toggle theme">
+                    <i data-lucide="moon" id="theme-toggle-icon"></i>
+                </button>
+                <div class="units-toggle-container">
+                    <span class="unit-label">°C</span>
+                    <label class="switch">
+                        <input type="checkbox" id="unit-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="unit-label">°F</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Loader State -->
+        <div id="loader" class="loader-container hidden">
+            <div class="spinner"></div>
+            <p>Gathering atmospheric details...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-card" class="error-container glass-card hidden">
+            <i data-lucide="alert-circle" class="error-icon"></i>
+            <p id="error-message">City not found. Please check spelling.</p>
+        </div>
+
+        <!-- Dashboard Grid Layout -->
+        <main class="dashboard-grid" id="weather-dashboard">
+            <!-- Left Side: Core Weather Card -->
+            <section class="main-card glass-card">
+                <div class="favorite-btn-wrapper">
+                    <button id="favorite-toggle-btn" class="icon-btn favorite-btn" title="Save this location">
+                        <i data-lucide="star" id="favorite-icon"></i>
+                    </button>
+                </div>
+                
+                <div class="location-details">
+                    <h2 id="city-name">London</h2>
+                    <span id="country-code" class="country-badge">GB</span>
+                    <p id="local-time" class="local-time">Sunday, 17:30</p>
+                </div>
+
+                <div class="weather-visual">
+                    <div class="temp-display">
+                        <span id="current-temp" class="temp-value">15</span>
+                        <span class="temp-unit" id="current-temp-unit">°C</span>
+                    </div>
+                    <div class="condition-display">
+                        <div class="condition-icon-wrapper" id="condition-icon-container">
+                            <!-- SVG weather icon dynamically generated -->
+                            <i data-lucide="cloud-rain" class="main-weather-icon" id="main-weather-icon"></i>
+                        </div>
+                        <p id="weather-description" class="weather-description">Light rain</p>
+                    </div>
+                </div>
+
+                <div class="temp-extremes">
+                    <div class="extreme-item">
+                        <i data-lucide="arrow-down" class="min-temp-icon"></i>
+                        <span>Min: <strong id="temp-min">12</strong>°</span>
+                    </div>
+                    <div class="extreme-separator"></div>
+                    <div class="extreme-item">
+                        <i data-lucide="arrow-up" class="max-temp-icon"></i>
+                        <span>Max: <strong id="temp-max">18</strong>°</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Middle: Secondary Metrics Grid -->
+            <section class="metrics-grid">
+                <!-- Card 1: Feels Like -->
+                <div class="metric-card glass-card">
+                    <div class="metric-header">
+                        <i data-lucide="thermometer"></i>
+                        <h3>Feels Like</h3>
+                    </div>
+                    <div class="metric-value">
+                        <span id="feels-like-val">14</span>°
+                    </div>
+                    <p class="metric-sub" id="feels-like-desc">Similar to actual temp</p>
+                </div>
+
+                <!-- Card 2: Humidity -->
+                <div class="metric-card glass-card">
+                    <div class="metric-header">
+                        <i data-lucide="droplet"></i>
+                        <h3>Humidity</h3>
+                    </div>
+                    <div class="metric-value">
+                        <span id="humidity-val">78</span>%
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="humidity-progress" style="width: 78%;"></div>
+                    </div>
+                    <p class="metric-sub" id="humidity-desc">Moderate humidity</p>
+                </div>
+
+                <!-- Card 3: Wind -->
+                <div class="metric-card glass-card">
+                    <div class="metric-header">
+                        <i data-lucide="wind"></i>
+                        <h3>Wind</h3>
+                    </div>
+                    <div class="wind-info">
+                        <div class="wind-metric">
+                            <span id="wind-speed-val">4.1</span> <span class="wind-unit" id="wind-unit-label">m/s</span>
+                        </div>
+                        <div class="wind-compass" id="wind-compass" title="Wind Direction">
+                            <i data-lucide="navigation" class="compass-arrow" id="compass-arrow"></i>
+                        </div>
+                    </div>
+                    <p class="metric-sub" id="wind-desc">Breeze from South-West</p>
+                </div>
+
+                <!-- Card 4: Pressure -->
+                <div class="metric-card glass-card">
+                    <div class="metric-header">
+                        <i data-lucide="gauge"></i>
+                        <h3>Pressure</h3>
+                    </div>
+                    <div class="metric-value">
+                        <span id="pressure-val">1012</span> <span class="pressure-unit">hPa</span>
+                    </div>
+                    <p class="metric-sub" id="pressure-desc">Standard pressure</p>
+                </div>
+
+                <!-- Card 5: Sunrise / Sunset -->
+                <div class="metric-card glass-card double-width">
+                    <div class="metric-header">
+                        <i data-lucide="sun-medium"></i>
+                        <h3>Sun Cycle</h3>
+                    </div>
+                    <div class="sun-cycle-container">
+                        <div class="sun-cycle-item">
+                            <i data-lucide="sunrise" class="sunrise-icon"></i>
+                            <div>
+                                <span class="sun-label">Sunrise</span>
+                                <span class="sun-time" id="sunrise-val">05:12</span>
+                            </div>
+                        </div>
+                        <div class="sun-cycle-divider"></div>
+                        <div class="sun-cycle-item">
+                            <i data-lucide="sunset" class="sunset-icon"></i>
+                            <div>
+                                <span class="sun-label">Sunset</span>
+                                <span class="sun-time" id="sunset-val">20:45</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bottom Left: 24-Hour Forecast Timeline & Chart -->
+            <section class="forecast-timeline-section glass-card">
+                <div class="section-title-wrapper">
+                    <i data-lucide="line-chart"></i>
+                    <h3>24-Hour Forecast Trend</h3>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="tempTrendChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Bottom Right: 5-Day Forecast -->
+            <section class="five-day-forecast glass-card">
+                <div class="section-title-wrapper">
+                    <i data-lucide="calendar"></i>
+                    <h3>5-Day Forecast</h3>
+                </div>
+                <div class="forecast-list" id="five-day-list">
+                    <!-- Forecast items injected by Javascript -->
+                    <!-- Sample Item (placeholder structure for styling) -->
+                    <div class="forecast-day-row">
+                        <span class="day-name">Mon</span>
+                        <div class="day-condition">
+                            <i data-lucide="cloud-sun"></i>
+                            <span>Scattered Clouds</span>
+                        </div>
+                        <div class="day-temp-range">
+                            <span class="min-t">12°</span>
+                            <div class="temp-slider-bar">
+                                <div class="temp-slider-fill" style="left: 20%; width: 60%;"></div>
+                            </div>
+                            <span class="max-t">20°</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Custom Script -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
