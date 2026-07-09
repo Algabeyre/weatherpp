@@ -148,6 +148,14 @@ body.theme-light .search-form {
     border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
+/* Dark Mode logo visibility enhancement */
+body:not(.theme-light) .logo-area h1 {
+    color: #ffffff;
+    text-shadow: 0 0 10px var(--accent-color), 0 0 20px rgba(255, 255, 255, 0.3);
+    background: none;
+    -webkit-text-fill-color: unset;
+}
+
 body.theme-light .search-form input {
     color: #0f172a;
 }
